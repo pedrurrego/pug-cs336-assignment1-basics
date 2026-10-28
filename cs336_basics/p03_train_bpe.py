@@ -71,7 +71,6 @@ def pug_bpe(
     len_vocab = len(vocab)
 
     while len_vocab < max_vocab_size:
-
         d_byte_pairs_freq = _get_pair_counts(d_freq_unique_pretok)
 
         most_freq = tuple()
