@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import os
+import re
 from collections.abc import Iterable
 from typing import IO, Any, BinaryIO
 
 import numpy.typing as npt
+import regex
 import torch
 from jaxtyping import Bool, Float, Int
 from torch import Tensor
+
+from cs336_basics import pug_bpe
 
 
 def run_linear(
@@ -589,4 +593,34 @@ def run_train_bpe(
                 representing that <token1> was merged with <token2>.
                 Merges are ordered by order of creation.
     """
-    raise NotImplementedError
+
+    PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
+
+    with open(input_path) as f:
+        data = f.read()
+
+    vocab = {}
+    for i in range(256):
+        vocab[i] = bytes([i])
+
+    len_vocab = len(vocab)
+
+    for idx, tok in enumerate(special_tokens):
+        vocab[idx + len_vocab] = tok.encode("utf-8")
+
+    # 1 - Remove special tokens.
+    spec_tok = "|".join(special_tokens)
+    spec_tok = re.escape(spec_tok)
+
+    # 2 - Pre-tokenize
+    data_after_spec_tok = re.split(spec_tok, data)
+    PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
+
+    pre_tokens = []
+    for text_ in data_after_spec_tok:
+        pt = regex.findall(PAT, text_)
+        pre_tokens += pt
+
+    vocab, merges = pug_bpe(pre_tokens=pre_tokens, vocab=vocab, max_vocab_size=vocab_size)
+
+    return vocab, merges
